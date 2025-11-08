@@ -9,6 +9,41 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* ========================================
+           🎨 BRANDING CUSTOMIZATION SECTION
+           ======================================== */
+        
+        /* Add your logo here - replace the URL with your logo image */
+        .brand-logo {
+            background-image: url('YOUR_LOGO_URL_HERE.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            width: 150px;  /* Adjust logo width */
+            height: 50px;  /* Adjust logo height */
+        }
+        
+        /* Your brand colors - change these hex codes */
+        :root {
+            --brand-primary: #2563eb;      /* Main brand color */
+            --brand-secondary: #4f46e5;    /* Secondary brand color */
+            --brand-accent: #06b6d4;       /* Accent color */
+        }
+        
+        .brand-gradient {
+            background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary));
+        }
+        
+        .brand-button {
+            background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary));
+        }
+        
+        .brand-button:hover {
+            opacity: 0.9;
+        }
+        
+        /* ======================================== */
+        
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -24,6 +59,19 @@
 
     <script type="text/babel">
         const { useState } = React;
+
+        /* ========================================
+           🏢 BRANDING TEXT CUSTOMIZATION
+           ======================================== */
+        
+        const BRAND_CONFIG = {
+            companyName: "Your Company Name",  // Change this to your company name
+            tagline: "Professional Audio Solutions",  // Change this to your tagline
+            showLogo: false,  // Set to true when you add a logo URL above
+            footerText: "Powered by Your Company Name",  // Footer branding
+        };
+        
+        /* ======================================== */
 
         // Lucide React icons as inline SVGs
         const Upload = ({ className }) => (
@@ -83,9 +131,7 @@
                     for (let i = 0; i < lines.length; i++) {
                         const line = lines[i];
                         
-                        // Check if this is a header line (contains "Phase" column)
                         if (!headerProcessed && line.includes('Phase')) {
-                            // Split by tabs or multiple spaces
                             const columns = line.split(/\t+|\s{2,}/);
                             phaseColumnIndex = columns.findIndex(col => 
                                 col.trim().toLowerCase().includes('phase')
@@ -95,14 +141,11 @@
                             continue;
                         }
 
-                        // Process data lines if we found the Phase column
                         if (headerProcessed && phaseColumnIndex !== -1 && line.trim()) {
                             const columns = line.split(/\t+|\s{2,}/);
                             
                             if (columns.length > phaseColumnIndex) {
-                                // Replace the phase value with 0
                                 columns[phaseColumnIndex] = '0';
-                                // Rejoin with tabs (common format for these analyzers)
                                 processedLines.push(columns.join('\t'));
                             } else {
                                 processedLines.push(line);
@@ -170,9 +213,16 @@
             return (
                 <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 flex items-center justify-center">
                     <div className="max-w-2xl w-full">
+                        {/* Brand Logo (Top) - Only shows if showLogo is true */}
+                        {BRAND_CONFIG.showLogo && (
+                            <div className="flex justify-center mb-6">
+                                <div className="brand-logo"></div>
+                            </div>
+                        )}
+                        
                         <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden">
-                            {/* Header */}
-                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
+                            {/* Header with Branding */}
+                            <div className="brand-gradient p-6">
                                 <div className="flex items-center gap-3">
                                     <FileText className="w-8 h-8 text-white" />
                                     <div>
@@ -180,7 +230,7 @@
                                             Phase Column Processor
                                         </h1>
                                         <p className="text-blue-100 text-sm mt-1">
-                                            Set all Phase values to 0 for Rita Analyzer & Smaart
+                                            {BRAND_CONFIG.tagline}
                                         </p>
                                     </div>
                                 </div>
@@ -199,7 +249,7 @@
                                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                     <Upload className="w-16 h-16 text-slate-400 mb-4" />
                                                     <p className="mb-2 text-lg font-semibold text-slate-300">
-                                                        {file ? file.name : 'Click to upload'}
+                                                        {file ? file.name : 'Click to upload or drag and drop'}
                                                     </p>
                                                     <p className="text-sm text-slate-400">
                                                         .txt files only
@@ -271,11 +321,11 @@
                                             </div>
                                         </div>
 
-                                        {/* Action Buttons */}
+                                        {/* Action Buttons with Brand Colors */}
                                         <div className="flex gap-3">
                                             <button
                                                 onClick={downloadProcessedFile}
-                                                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                                                className="brand-button flex-1 flex items-center justify-center gap-2 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
                                             >
                                                 <Download className="w-5 h-5" />
                                                 Download Processed File
@@ -298,10 +348,15 @@
                             </div>
                         </div>
 
-                        {/* Footer */}
-                        <p className="text-center text-slate-400 text-sm mt-6">
-                            Compatible with Rita Analyzer and Smaart file formats
-                        </p>
+                        {/* Footer with Brand */}
+                        <div className="text-center mt-6">
+                            <p className="text-slate-400 text-sm">
+                                Compatible with Rita Analyzer and Smaart
+                            </p>
+                            <p className="text-slate-500 text-xs mt-2">
+                                {BRAND_CONFIG.footerText}
+                            </p>
+                        </div>
                     </div>
                 </div>
             );
