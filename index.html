@@ -65,10 +65,10 @@
            ======================================== */
         
         const BRAND_CONFIG = {
-            companyName: "Your Company Name",  // Change this to your company name
+            companyName: "Eckho Systems",  // Change this to your company name
             tagline: "Professional Audio Solutions",  // Change this to your tagline
             showLogo: false,  // Set to true when you add a logo URL above
-            footerText: "Powered by Your Company Name",  // Footer branding
+            footerText: "Powered by Eckho Systems",  // Footer branding
         };
         
         /* ======================================== */
@@ -120,13 +120,21 @@
             const [processing, setProcessing] = useState(false);
             const [result, setResult] = useState(null);
             const [error, setError] = useState(null);
+            const [useFrequencyRange, setUseFrequencyRange] = useState(false);
+            const [minFreq, setMinFreq] = useState('');
+            const [maxFreq, setMaxFreq] = useState('');
 
             const processFile = async (fileContent, fileName) => {
                 try {
                     const lines = fileContent.split('\n');
                     const processedLines = [];
                     let phaseColumnIndex = -1;
+                    let frequencyColumnIndex = -1;
                     let headerProcessed = false;
+
+                    // Parse frequency range if enabled
+                    const minFrequency = useFrequencyRange && minFreq ? parseFloat(minFreq) : null;
+                    const maxFrequency = useFrequencyRange && maxFreq ? parseFloat(maxFreq) : null;
 
                     for (let i = 0; i < lines.length; i++) {
                         const line = lines[i];
@@ -136,6 +144,15 @@
                             phaseColumnIndex = columns.findIndex(col => 
                                 col.trim().toLowerCase().includes('phase')
                             );
+                            // Find frequency column (usually first column or labeled "Freq", "Frequency", "Hz")
+                            frequencyColumnIndex = columns.findIndex(col => {
+                                const colName = col.trim().toLowerCase();
+                                return colName.includes('freq') || colName.includes('hz') || colName === 'f';
+                            });
+                            // If not found, assume first column is frequency
+                            if (frequencyColumnIndex === -1) {
+                                frequencyColumnIndex = 0;
+                            }
                             headerProcessed = true;
                             processedLines.push(line);
                             continue;
@@ -145,7 +162,26 @@
                             const columns = line.split(/\t+|\s{2,}/);
                             
                             if (columns.length > phaseColumnIndex) {
-                                columns[phaseColumnIndex] = '0';
+                                let shouldZeroPhase = true;
+
+                                // Check frequency range if enabled
+                                if (useFrequencyRange && (minFrequency !== null || maxFrequency !== null)) {
+                                    const frequency = parseFloat(columns[frequencyColumnIndex]);
+                                    
+                                    if (!isNaN(frequency)) {
+                                        shouldZeroPhase = true;
+                                        if (minFrequency !== null && frequency < minFrequency) {
+                                            shouldZeroPhase = false;
+                                        }
+                                        if (maxFrequency !== null && frequency > maxFrequency) {
+                                            shouldZeroPhase = false;
+                                        }
+                                    }
+                                }
+
+                                if (shouldZeroPhase) {
+                                    columns[phaseColumnIndex] = '0';
+                                }
                                 processedLines.push(columns.join('\t'));
                             } else {
                                 processedLines.push(line);
@@ -265,6 +301,57 @@
                                             </label>
                                         </div>
 
+                                        {/* Frequency Range Options */}
+                                        <div className="mb-6 p-6 bg-slate-700 rounded-lg border border-slate-600">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <input
+                                                    type="checkbox"
+                                                    id="freq-range-toggle"
+                                                    checked={useFrequencyRange}
+                                                    onChange={(e) => setUseFrequencyRange(e.target.checked)}
+                                                    className="w-4 h-4 rounded border-slate-500 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-700"
+                                                />
+                                                <label htmlFor="freq-range-toggle" className="text-slate-200 font-semibold cursor-pointer">
+                                                    Apply to specific frequency range only
+                                                </label>
+                                            </div>
+                                            
+                                            {useFrequencyRange && (
+                                                <div className="grid grid-cols-2 gap-4 mt-4 pl-7">
+                                                    <div>
+                                                        <label className="block text-sm text-slate-400 mb-2">
+                                                            Min Frequency (Hz)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={minFreq}
+                                                            onChange={(e) => setMinFreq(e.target.value)}
+                                                            placeholder="e.g., 100"
+                                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm text-slate-400 mb-2">
+                                                            Max Frequency (Hz)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={maxFreq}
+                                                            onChange={(e) => setMaxFreq(e.target.value)}
+                                                            placeholder="e.g., 10000"
+                                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {useFrequencyRange && (
+                                                <p className="text-xs text-slate-400 mt-3 pl-7">
+                                                    Leave fields empty to set no limit on that end
+                                                </p>
+                                            )}
+                                        </div>
+
                                         {/* Processing Status */}
                                         {processing && (
                                             <div className="flex items-center justify-center gap-3 p-4 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
@@ -297,10 +384,14 @@
                                                 </li>
                                                 <li className="flex items-start gap-2">
                                                     <span className="text-blue-400 font-bold">2.</span>
-                                                    All values in the Phase column will be set to 0
+                                                    Optionally specify a frequency range to process
                                                 </li>
                                                 <li className="flex items-start gap-2">
                                                     <span className="text-blue-400 font-bold">3.</span>
+                                                    All values in the Phase column (within range) will be set to 0
+                                                </li>
+                                                <li className="flex items-start gap-2">
+                                                    <span className="text-blue-400 font-bold">4.</span>
                                                     Download the processed file with the original format preserved
                                                 </li>
                                             </ul>
@@ -316,7 +407,10 @@
                                                     File processed successfully!
                                                 </p>
                                                 <p className="text-sm text-green-200 mt-1">
-                                                    All Phase column values have been set to 0
+                                                    {useFrequencyRange && (minFreq || maxFreq) 
+                                                        ? `Phase column zeroed for ${minFreq || '0'} Hz to ${maxFreq || '∞'} Hz`
+                                                        : 'All Phase column values have been set to 0'
+                                                    }
                                                 </p>
                                             </div>
                                         </div>
