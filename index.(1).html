@@ -104,6 +104,11 @@
             border-color: #2563eb;
         }
 
+        .upload-label.file-selected {
+            border-color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
         .upload-icon {
             width: 64px;
             height: 64px;
@@ -324,6 +329,11 @@
             font-size: 16px;
         }
 
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .btn-primary {
             flex: 1;
             background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary));
@@ -331,7 +341,7 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             opacity: 0.9;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
         }
@@ -343,13 +353,18 @@
             border: 1px solid #475569;
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background-color: #475569;
         }
 
         .btn-icon {
             width: 20px;
             height: 20px;
+        }
+
+        .process-btn {
+            width: 100%;
+            margin-bottom: 24px;
         }
 
         .result-info {
@@ -422,7 +437,7 @@
                 <div class="content">
                     <div id="uploadSection">
                         <div class="upload-area">
-                            <label for="file-upload" class="upload-label">
+                            <label for="file-upload" class="upload-label" id="uploadLabel">
                                 <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="17 8 12 3 7 8"></polyline>
@@ -458,6 +473,15 @@
                             </p>
                         </div>
 
+                        <button class="btn btn-primary process-btn" id="processBtn" disabled>
+                            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="16 12 12 8 8 12"></polyline>
+                                <line x1="12" y1="16" x2="12" y2="8"></line>
+                            </svg>
+                            Process File
+                        </button>
+
                         <div id="processingAlert" class="alert alert-processing hidden">
                             <div class="spinner"></div>
                             <span class="alert-text">Processing file...</span>
@@ -489,7 +513,7 @@
                             <ul class="info-list">
                                 <li><span>1.</span> Upload your .txt file from Rita Analyzer or Smaart</li>
                                 <li><span>2.</span> Optionally specify a frequency range to process</li>
-                                <li><span>3.</span> All values in the Phase column (within range) will be set to 0</li>
+                                <li><span>3.</span> Click "Process File" to zero the Phase column values</li>
                                 <li><span>4.</span> Download the processed file with timestamp in the filename</li>
                             </ul>
                         </div>
@@ -538,16 +562,20 @@
     </div>
 
     <script>
+        let uploadedFile = null;
+        let fileContent = null;
         let processedContent = null;
         let processedFileName = null;
 
         const fileInput = document.getElementById('file-upload');
+        const uploadLabel = document.getElementById('uploadLabel');
         const uploadText = document.getElementById('uploadText');
         const freqToggle = document.getElementById('freq-range-toggle');
         const freqInputs = document.getElementById('freqInputs');
         const freqHint = document.getElementById('freqHint');
         const minFreqInput = document.getElementById('minFreq');
         const maxFreqInput = document.getElementById('maxFreq');
+        const processBtn = document.getElementById('processBtn');
         const processingAlert = document.getElementById('processingAlert');
         const errorAlert = document.getElementById('errorAlert');
         const errorText = document.getElementById('errorText');
@@ -575,32 +603,55 @@
 
             if (!file.name.endsWith('.txt')) {
                 showError('Please upload a .txt file');
+                processBtn.disabled = true;
                 return;
             }
 
-            uploadText.textContent = file.name;
+            try {
+                uploadedFile = file;
+                fileContent = await file.text();
+                uploadText.textContent = file.name;
+                uploadLabel.classList.add('file-selected');
+                processBtn.disabled = false;
+                hideError();
+            } catch (err) {
+                showError('Failed to read file: ' + err.message);
+                processBtn.disabled = true;
+            }
+        });
+
+        processBtn.addEventListener('click', function() {
+            if (!fileContent || !uploadedFile) {
+                showError('Please upload a file first');
+                return;
+            }
+
             hideError();
             showProcessing();
+            processBtn.disabled = true;
 
-            try {
-                const content = await file.text();
-                const processed = processFile(content);
-                
-                const now = new Date();
-                const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-                const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
-                const baseName = file.name.replace('.txt', '');
-                const fileName = `${baseName}_phase0_${dateStr}_${timeStr}.txt`;
+            // Use setTimeout to allow UI to update before processing
+            setTimeout(() => {
+                try {
+                    const processed = processFile(fileContent);
+                    
+                    const now = new Date();
+                    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+                    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
+                    const baseName = uploadedFile.name.replace('.txt', '');
+                    const fileName = `${baseName}_phase0_${dateStr}_${timeStr}.txt`;
 
-                processedContent = processed;
-                processedFileName = fileName;
+                    processedContent = processed;
+                    processedFileName = fileName;
 
-                hideProcessing();
-                showResult();
-            } catch (err) {
-                hideProcessing();
-                showError(err.message);
-            }
+                    hideProcessing();
+                    showResult();
+                } catch (err) {
+                    hideProcessing();
+                    showError(err.message);
+                    processBtn.disabled = false;
+                }
+            }, 100);
         });
 
         function processFile(content) {
@@ -717,12 +768,19 @@
         });
 
         resetBtn.addEventListener('click', function() {
+            uploadedFile = null;
+            fileContent = null;
             processedContent = null;
             processedFileName = null;
             fileInput.value = '';
             uploadText.textContent = 'Click to upload file';
+            uploadLabel.classList.remove('file-selected');
             minFreqInput.value = '';
             maxFreqInput.value = '';
+            freqToggle.checked = false;
+            freqInputs.classList.add('hidden');
+            freqHint.classList.add('hidden');
+            processBtn.disabled = true;
             hideError();
             uploadSection.classList.remove('hidden');
             resultSection.classList.add('hidden');
