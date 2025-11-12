@@ -144,12 +144,19 @@
             const loadFileHistory = async () => {
                 try {
                     setLoadingHistory(true);
+                    console.log('Loading file history...');
+                    
                     const result = await window.storage.list('phase_file:');
-                    if (result && result.keys) {
+                    console.log('Storage list result:', result);
+                    
+                    if (result && result.keys && result.keys.length > 0) {
+                        console.log('Found keys:', result.keys);
+                        
                         const historyPromises = result.keys.map(async (key) => {
                             try {
                                 const fileData = await window.storage.get(key);
-                                if (fileData) {
+                                console.log('Loaded file data for key:', key, fileData);
+                                if (fileData && fileData.value) {
                                     return JSON.parse(fileData.value);
                                 }
                             } catch (err) {
@@ -162,7 +169,11 @@
                             .filter(item => item !== null)
                             .sort((a, b) => b.timestamp - a.timestamp);
                         
+                        console.log('Loaded history items:', history.length);
                         setFileHistory(history);
+                    } else {
+                        console.log('No files found in storage');
+                        setFileHistory([]);
                     }
                 } catch (err) {
                     console.error('Error loading history:', err);
